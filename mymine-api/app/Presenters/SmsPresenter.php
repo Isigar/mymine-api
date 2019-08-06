@@ -15,8 +15,15 @@ use Tracy\Debugger;
 
 final class SmsPresenter extends Presenter
 {
-    public function actionDefault($timestamp, $phone, $sms, $shortcode, $country, $operator, $att, $id)
+    public function actionDefault($timestamp, $phone, $sms, $shortcode, $country, $operator, $att)
     {
+        if(!$timestamp || !$phone || !$sms || !$shortcode || !$country || !$operator || !$att){
+            $response = new Response();
+            $response->setTitle('SMS Gate')
+                ->addError((new Error())->setTitle('Chybějící parametry')->setMsg('Chybějící parametry'));
+            $this->sendJson($response->prepare());
+        }
+
         $db = new Database();
         try {
             $tryFind = $db->getFirebase()->getAuth()->getUserByEmail(explode(' ', $sms)[1]);
