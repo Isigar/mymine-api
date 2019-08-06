@@ -9,6 +9,7 @@ use App\Core\Api\Response;
 use App\Core\Firebase\Db\Database;
 use Kreait\Firebase\Exception\ApiException;
 use Kreait\Firebase\Exception\Auth\UserNotFound;
+use Nette\Application\AbortException;
 use Nette\Application\UI\Presenter;
 use Nette\Neon\Exception;
 use Tracy\Debugger;
@@ -17,7 +18,8 @@ final class SmsPresenter extends Presenter
 {
     public function actionDefault($timestamp, $phone, $sms, $shortcode, $country, $operator, $att)
     {
-        if(!$timestamp || !$phone || !$sms || !$shortcode || !$country || !$operator || !$att){
+        $failed = false;
+        if (!$timestamp || !$phone || !$sms || !$shortcode || !$country || !$operator || !$att) {
             $response = new Response();
             $response->setTitle('SMS Gate')
                 ->addError((new Error())->setTitle('Chybějící parametry')->setMsg('Chybějící parametry'));
@@ -38,7 +40,7 @@ final class SmsPresenter extends Presenter
             //Save SMS to database
             try {
                 $val = 0;
-                switch ($shortcode){
+                switch ($shortcode) {
                     case '90733079':
                         $val = 50;
                         break;
@@ -73,25 +75,26 @@ final class SmsPresenter extends Presenter
 
     public function actionDelivery($timestamp, $request, $status, $message, $att)
     {
+        $failed = false;
         $db = new Database();
         try {
             $reference = $db->getDb()->getReference('sms')->orderByChild('ext_id')->equalTo($request);
             $tryFind = $reference->getValue();
             if ($tryFind) {
                 $key = null;
-                foreach ($tryFind as $k => $item){
+                foreach ($tryFind as $k => $item) {
                     $key = $k;
                     $tryFind = $item;
                     break;
                 }
                 if ($status === 'DELIVERED' && $tryFind['state'] === 'WAITING') {
                     //Update
-                    $db->update('sms/'.$key,[
+                    $db->update('sms/' . $key, [
                         'state' => 'DELIVERED'
                     ]);
 
                     //Update ext data
-                    $userRef = $db->getDb()->getReference('users/'.$tryFind['user_id']);
+                    $userRef = $db->getDb()->getReference('users/' . $tryFind['user_id']);
                     $userVal = $userRef->getValue();
                     $ordHistory = $userVal['orderHistory'];
                     $ordHistory[] = [
@@ -122,10 +125,16 @@ final class SmsPresenter extends Presenter
             }
         } catch (Exception $e) {
             Debugger::log($e->getMessage(), Debugger::CRITICAL);
-            $response = new Response();
-            $response->setTitle('SMS Gate')
-                ->addError((new Error())->setTitle('SMS chyba!')->setMsg($e->getMessage()));
-            $this->sendJson($response->prepare());
+            if (!($e instanceof AbortException)) {
+                $failed = $e;
+            }
+        } finally {
+            if ($failed instanceof Exception) {
+                $response = new Response();
+                $response->setTitle('SMS Gate')
+                    ->addError((new Error())->setTitle('SMS chyba!')->setMsg($failed->getMessage()));
+                $this->sendJson($response->prepare());
+            }
         }
     }
 }

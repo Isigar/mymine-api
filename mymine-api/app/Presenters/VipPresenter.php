@@ -8,6 +8,7 @@ use App\Core\Api\Error;
 use App\Core\Api\Response;
 use App\Core\Firebase\Db\Database;
 use Kreait\Firebase\Exception\Messaging\NotFound;
+use Nette\Application\AbortException;
 use Nette\Application\UI\Presenter;
 use Nette\Neon\Exception;
 use Nette\Utils\Random;
@@ -23,6 +24,7 @@ final class VipPresenter extends Presenter
     }
 
     public function actionGenerate($uid,$resolve){
+        $failed = false;
         try{
             if(!$uid || !$resolve){
                 $res = new Response();
@@ -43,9 +45,15 @@ final class VipPresenter extends Presenter
             $this->sendJson($res->prepare());
         }catch (Exception $e){
             Debugger::log($e->getMessage(),Debugger::CRITICAL);
-            $res = new Response();
-            $res->setTitle('VIP Gate')->addError((new Error())->setTitle('Nastala chyba')->setMsg($e->getMessage()));
-            $this->sendJson($res->prepare());
+            if(!($e instanceof AbortException)){
+                $failed = $e;
+            }
+        }finally{
+            if($failed instanceof Exception){
+                $res = new Response();
+                $res->setTitle('VIP Gate')->addError((new Error())->setTitle('Nastala chyba')->setMsg($failed->getMessage()));
+                $this->sendJson($res->prepare());
+            }
         }
     }
 
@@ -54,6 +62,7 @@ final class VipPresenter extends Presenter
      * @throws \Nette\Application\AbortException
      */
     public function actionGetCode(string $code){
+        $failed = false;
         try{
             $db = new Database();
             $ref = $db->getDb()->getReference('vip')->orderByChild('code')->equalTo($code);
@@ -73,9 +82,15 @@ final class VipPresenter extends Presenter
             }
         }catch (Exception $e){
             Debugger::log($e->getMessage(),Debugger::CRITICAL);
-            $res = new Response();
-            $res->setTitle('VIP Gate')->addError((new Error())->setTitle('Nastala chyba')->setMsg($e->getMessage()));
-            $this->sendJson($res->prepare());
+            if(!($e instanceof AbortException)){
+                $failed = $e;
+            }
+        }finally{
+            if($failed instanceof Exception){
+                $res = new Response();
+                $res->setTitle('VIP Gate')->addError((new Error())->setTitle('Nastala chyba')->setMsg($failed->getMessage()));
+                $this->sendJson($res->prepare());
+            }
         }
     }
 
@@ -85,6 +100,7 @@ final class VipPresenter extends Presenter
      * @throws \Nette\Application\AbortException
      */
     public function actionUseCode(string $code){
+        $failed = false;
         try{
             $db = new Database();
             $ref = $db->getDb()->getReference('vip')->orderByChild('code')->equalTo($code);
@@ -104,8 +120,9 @@ final class VipPresenter extends Presenter
                         'state' => 'USED'
                     ]);
 
+                    $output['resolve'] = $tryFind['resolve'];
                     $res = new Response();
-                    $res->setTitle('VIP Gate')->setMsg('Kód byl právě použit')->setData(true);
+                    $res->setTitle('VIP Gate')->setMsg('Kód byl právě použit')->setData($output);
                     $this->sendJson($res->prepare());
                 }else{
                     $res = new Response();
@@ -119,9 +136,15 @@ final class VipPresenter extends Presenter
             }
         }catch (Exception $e){
             Debugger::log($e->getMessage(),Debugger::CRITICAL);
-            $res = new Response();
-            $res->setTitle('VIP Gate')->addError((new Error())->setTitle('Nastala chyba')->setMsg($e->getMessage()));
-            $this->sendJson($res->prepare());
+            if(!($e instanceof AbortException)){
+                $failed = $e;
+            }
+        }finally{
+            if($failed instanceof Exception){
+                $res = new Response();
+                $res->setTitle('VIP Gate')->addError((new Error())->setTitle('Nastala chyba')->setMsg($failed->getMessage()));
+                $this->sendJson($res->prepare());
+            }
         }
     }
 }
