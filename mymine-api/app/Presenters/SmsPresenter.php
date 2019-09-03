@@ -10,20 +10,25 @@ use App\Core\Firebase\Db\Database;
 use Kreait\Firebase\Exception\ApiException;
 use Kreait\Firebase\Exception\Auth\UserNotFound;
 use Nette\Application\AbortException;
+use Nette\Application\Responses\TextResponse;
 use Nette\Application\UI\Presenter;
 use Nette\Neon\Exception;
 use Tracy\Debugger;
 
 final class SmsPresenter extends Presenter
 {
+    public function startup(){
+        parent::startup();
+        $this->getHttpResponse()->setHeader('Access-Control-Allow-Origin', '*');
+        $this->getHttpResponse()->setHeader('Access-Control-Allow-Method:', 'GET');
+        $this->getHttpResponse()->setHeader('Access-Control-Allow-Headers', '*');
+    }
+
     public function actionDefault($timestamp, $phone, $sms, $shortcode, $country, $operator, $att)
     {
         $failed = false;
         if (!$timestamp || !$phone || !$sms || !$shortcode || !$country || !$operator || !$att) {
-            $response = new Response();
-            $response->setTitle('SMS Gate')
-                ->addError((new Error())->setTitle('Chybějící parametry')->setMsg('Chybějící parametry'));
-            $this->sendJson($response->prepare());
+            $this->error("Missing fileds!");
         }
 
         $db = new Database();
@@ -31,10 +36,11 @@ final class SmsPresenter extends Presenter
             $tryFind = $db->getFirebase()->getAuth()->getUserByEmail(explode(' ', $sms)[1]);
         } catch (UserNotFound $e) {
             //Send response
-            $response = new Response();
-            $response->setTitle('SMS Gate')
-                ->addError((new Error())->setTitle('Uživatel nebyl nalezen!')->setMsg('Email, který jste poslali v SMS nebyl nalezen!'));
-            $this->sendJson($response->prepare());
+            $message = "Uživatel nebyl nalezen, jste zaregistrováni pomocí tohoto emailu?;FREE".$shortcode;
+            $this->getHttpResponse()->setContentType('text/plain', 'UTF-8');
+            $this->getHttpResponse()->setHeader('Content-length',strlen($message))
+            $textResponse = new TextResponse($message);
+            $this->sendResponse($textResponse);
         }
         if ($tryFind) {
             //Save SMS to database
@@ -46,6 +52,14 @@ final class SmsPresenter extends Presenter
                         break;
                     case '90733149':
                         $val = 100;
+                        break;
+                    case '90333':
+                        break;
+                    case '90944':
+                        break;
+                    case '90210':
+                        break;
+                    case '90733':
                         break;
                 }
 
@@ -67,9 +81,11 @@ final class SmsPresenter extends Presenter
             }
 
             //Send response
-            $response = new Response();
-            $response->setTitle('SMS Gate')->setMsg('SMS byla úspěšně uložena, čeká se na odpověď.');
-            $this->sendJson($response->prepare());
+            $message = "Děkujeme za koupení VIP, výhody Vám budou brzy přičteny!;".$shortcode;
+            $this->getHttpResponse()->setContentType('text/plain', 'UTF-8');
+            $this->getHttpResponse()->setHeader('Content-length',strlen($message))
+            $textResponse = new TextResponse($message);
+            $this->sendResponse($textResponse);
         }
     }
 
