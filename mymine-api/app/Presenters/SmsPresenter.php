@@ -83,7 +83,7 @@ final class SmsPresenter extends Presenter
             //Send response
             $message = "Děkujeme za koupení VIP, výhody Vám budou brzy přičteny!;".$shortcode;
             $this->getHttpResponse()->setContentType('text/plain', 'UTF-8');
-            $this->getHttpResponse()->setHeader('Content-length',strlen($message))
+            $this->getHttpResponse()->setHeader('Content-length',strlen($message));
             $textResponse = new TextResponse($message);
             $this->sendResponse($textResponse);
         }
