@@ -48,7 +48,7 @@ final class SmsPresenter extends Presenter
 
         $db = new Database();
         try {
-            $tryFind = $db->getFirebase()->getAuth()->getUserByEmail([1]);
+            $tryFind = $db->getFirebase()->getAuth()->getUserByEmail(explode(' ', $sms)[1]);
         } catch (UserNotFound $e) {
 
             //Send response
