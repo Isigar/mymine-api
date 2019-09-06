@@ -38,7 +38,7 @@ final class SmsPresenter extends Presenter
             //Send response
             $message = "Uživatel nebyl nalezen, jste zaregistrováni pomocí tohoto emailu?;FREE".$shortcode;
             $this->getHttpResponse()->setContentType('text/plain', 'UTF-8');
-            $this->getHttpResponse()->setHeader('Content-length',strlen($message))
+            $this->getHttpResponse()->setHeader('Content-length',strlen($message));
             $textResponse = new TextResponse($message);
             $this->sendResponse($textResponse);
         }
@@ -54,12 +54,6 @@ final class SmsPresenter extends Presenter
                         $val = 100;
                         break;
                     case '90333':
-                        break;
-                    case '90944':
-                        break;
-                    case '90210':
-                        break;
-                    case '90733':
                         break;
                 }
 
