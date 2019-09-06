@@ -32,13 +32,27 @@ final class SmsPresenter extends Presenter
             $this->error("Missing fileds!");
         }
 
-        Debugger::log("SMS default: ".$timestamp." - ".$phone." - ",$shortcode. " - ".$sms);
+        Debugger::log("SMS default: ".$timestamp." - ".$phone." - ". $shortcode. " - ".$sms);
+
+        $val = 0;
+        switch (explode(' ', $sms)[0]) {
+            case 'MMK50':
+                $val = 50;
+                $deliveryShortcode = "90733079";
+                break;
+            case 'MMK100':
+                $val = 100;
+                $deliveryShortcode = "90733149";
+                break;
+        }
+
         $db = new Database();
         try {
-            $tryFind = $db->getFirebase()->getAuth()->getUserByEmail(explode(' ', $sms)[1]);
+            $tryFind = $db->getFirebase()->getAuth()->getUserByEmail([1]);
         } catch (UserNotFound $e) {
+
             //Send response
-            $message = "Uživatel nebyl nalezen, jste zaregistrováni pomocí tohoto emailu?;FREE".$shortcode;
+            $message = "Uživatel nebyl nalezen, jste zaregistrováni pomocí tohoto emailu?;FREE".$deliveryShortcode;
             $this->getHttpResponse()->setContentType('text/plain', 'UTF-8');
             $this->getHttpResponse()->setHeader('Content-length',strlen($message));
             $textResponse = new TextResponse($message);
@@ -47,17 +61,6 @@ final class SmsPresenter extends Presenter
         if ($tryFind) {
             //Save SMS to database
             try {
-                $val = 0;
-                switch ($shortcode) {
-                    case '90733079':
-                        $val = 50;
-                        break;
-                    case '90733149':
-                        $val = 100;
-                        break;
-                    case '90333':
-                        break;
-                }
 
                 $ref = $db->push('sms', [
                     'timestamp' => $timestamp,
@@ -77,7 +80,7 @@ final class SmsPresenter extends Presenter
             }
 
             //Send response
-            $message = "Děkujeme za koupení VIP, výhody Vám budou brzy přičteny!;FREE".$shortcode;
+            $message = "Děkujeme za koupení VIP, výhody Vám budou brzy přičteny!;FREE".$deliveryShortcode;
             $this->getHttpResponse()->setContentType('text/plain', 'UTF-8');
             $this->getHttpResponse()->setHeader('Content-length',strlen($message));
             $textResponse = new TextResponse($message);
