@@ -61,20 +61,41 @@ final class SmsPresenter extends Presenter
         if ($tryFind) {
             //Save SMS to database
             try {
+                //Check if this sms was not send multiply by id then update timestamp
+                $reference = $db->getDb()->getReference('sms')->orderByChild('ext_id')->equalTo($id);
+                $tryFindDuplicate = $reference->getValue();
+                if($tryFindDuplicate){
+                    $key = null;
+                    foreach ($tryFindDuplicate as $k => $item) {
+                        $key = $k;
+                        $tryFindDuplicate = $item;
+                        break;
+                    }
+                    $ref = $db->update('sms/'.$key, [
+                        'timestamp' => $timestamp,
+                        'phone' => $phone,
+                        'sms' => explode(' ', $sms),
+                        'shortcode' => $shortcode,
+                        'country' => $country,
+                        'operator' => $operator,
+                        'attr' => $att,
+                    ]);
+                }else{
+                    $ref = $db->push('sms', [
+                        'timestamp' => $timestamp,
+                        'phone' => $phone,
+                        'sms' => explode(' ', $sms),
+                        'shortcode' => $shortcode,
+                        'value' => $val,
+                        'country' => $country,
+                        'ext_id' => $id,
+                        'operator' => $operator,
+                        'attr' => $att,
+                        'user_id' => $tryFind->uid,
+                        'state' => 'WAITING',
+                    ]);
+                }
 
-                $ref = $db->push('sms', [
-                    'timestamp' => $timestamp,
-                    'phone' => $phone,
-                    'sms' => explode(' ', $sms),
-                    'shortcode' => $shortcode,
-                    'value' => $val,
-                    'country' => $country,
-                    'ext_id' => $att,
-                    'operator' => $operator,
-                    'attr' => $att,
-                    'user_id' => $tryFind->uid,
-                    'state' => 'WAITING'
-                ]);
             } catch (ApiException $e) {
                 Debugger::log($e->getMessage(), Debugger::CRITICAL);
             }
@@ -93,6 +114,7 @@ final class SmsPresenter extends Presenter
         $failed = false;
         $db = new Database();
         try {
+            Debugger::log("SMS delivery: ".$timestamp." - ".$request." - ". $status. " - ".$message);
             $reference = $db->getDb()->getReference('sms')->orderByChild('ext_id')->equalTo($request);
             $tryFind = $reference->getValue();
             if ($tryFind) {
