@@ -12,6 +12,7 @@ use Kreait\Firebase\Exception\Auth\UserNotFound;
 use Nette\Application\AbortException;
 use Nette\Application\Responses\TextResponse;
 use Nette\Application\UI\Presenter;
+use Nette\Http\IResponse;
 use Nette\Neon\Exception;
 use Tracy\Debugger;
 
@@ -24,13 +25,14 @@ final class SmsPresenter extends Presenter
         $this->getHttpResponse()->setHeader('Access-Control-Allow-Headers', '*');
     }
 
-    public function actionDefault($timestamp, $phone, $sms, $shortcode, $country, $operator, $att)
+    public function actionDefault($timestamp, $phone, $sms, $shortcode, $country, $operator, $att, $id)
     {
         $failed = false;
         if (!$timestamp || !$phone || !$sms || !$shortcode || !$country || !$operator || !$att) {
             $this->error("Missing fileds!");
         }
 
+        Debugger::log("SMS default: ".$timestamp." - ".$phone." - ",$shortcode. " - ".$sms);
         $db = new Database();
         try {
             $tryFind = $db->getFirebase()->getAuth()->getUserByEmail(explode(' ', $sms)[1]);
@@ -75,7 +77,7 @@ final class SmsPresenter extends Presenter
             }
 
             //Send response
-            $message = "Děkujeme za koupení VIP, výhody Vám budou brzy přičteny!;".$shortcode;
+            $message = "Děkujeme za koupení VIP, výhody Vám budou brzy přičteny!;FREE".$shortcode;
             $this->getHttpResponse()->setContentType('text/plain', 'UTF-8');
             $this->getHttpResponse()->setHeader('Content-length',strlen($message));
             $textResponse = new TextResponse($message);
@@ -83,7 +85,7 @@ final class SmsPresenter extends Presenter
         }
     }
 
-    public function actionDelivery($timestamp, $request, $status, $message, $att)
+    public function actionDelivery($timestamp, $request, $status, $message, $ord,$cnt,$att,$id)
     {
         $failed = false;
         $db = new Database();
@@ -100,7 +102,9 @@ final class SmsPresenter extends Presenter
                 if ($status === 'DELIVERED' && $tryFind['state'] === 'WAITING') {
                     //Update
                     $db->update('sms/' . $key, [
-                        'state' => 'DELIVERED'
+                        'state' => 'DELIVERED',
+                        'msg' => $message,
+                        'delivered' => $timestamp,
                     ]);
 
                     //Update ext data
@@ -118,9 +122,9 @@ final class SmsPresenter extends Presenter
                         'orderHistory' => $ordHistory
                     ]);
 
-                    $response = new Response();
-                    $response->setTitle('SMS Gate')->setMsg('SMS byla úspěšně uložena.');
-                    $this->sendJson($response->prepare());
+                    $textResponse = new TextResponse("");
+                    $this->getHttpResponse()->setCode(IResponse::S204_NO_CONTENT);
+                    $this->sendResponse($textResponse);
                 } else {
                     $response = new Response();
                     $response->setTitle('SMS Gate')
